@@ -10,4 +10,6 @@ Demande :
 Si vous avez GCC > 4.9 vous pouvez compiler sans boost, en remplaçant tout les boost:: dans jvcPostManager.cpp par std::, et remplacer l'include de boost dans le .hpp par l'include de <regex>.
 
 Pour l'instant, il faut lancer le programme avec en 1er paramètre le formulaire de réponse du topic, second le pseudo et troisème le mot de passe.
-F5 pour rafraîchir, entrée pour poster (dans l'avenir (mardi soir/mercredi) plus besoin d'appuyer sur F5, ça sera fait automatiquement).
+F10 pour quitter.
+
+Pour curlpp si vous avez la flemme vous pouvez télécharger une version amd64 ici http://www.blablacraft.fr/upload/libcurlpp.zip.
