@@ -3,7 +3,7 @@
 PATHOFOBJ = obj/
 CXX = g++
 EXE = JVTerm.exe
-CFLAGS = -std=c++11 -Wall -Wextra -pedantic
+CFLAGS = -std=c++11 -Wall -Wextra -pedantic -g
 LIBFLAG = -lncursesw -lcurlpp -lcurl -lboost_regex
 SRC = $(wildcard *.cpp)
 OBJ = $(SRC:.cpp=.o)

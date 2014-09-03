@@ -5,34 +5,20 @@
 
 jvcPostManagerClass::jvcPostManagerClass()
 {
-	std::list<std::string> headerGet;
-	std::list<std::string> headerPost;
-	headerGet.push_back("User-Agent: JVTerm");
-	headerGet.push_back("Content-Type: application/x-www-form-urlencoded");
-	headerGet.push_back("Connection: Keep-Alive");
-	headerGet.push_back("Cookie: lol=mdr");
-	headerPost = headerGet;
-
-	requestGet.setOpt(curlpp::options::HttpHeader(headerGet));
-	requestGet.setOpt(curlpp::options::WriteStream(&oss));
-
-	requestPost.setOpt(curlpp::options::HttpHeader(headerPost));
-	requestPost.setOpt(curlpp::options::WriteStream(&output));
-	requestPost.setOpt(curlpp::options::Url("http://www.jeuxvideo.com/cgi-bin/jvforums/forums.cgi"));
-	requestPost.setOpt(curlpp::options::CookieList(""));
-
-
 	idOfLastMessage = 0;
 
 	messagesRegex.assign("<li class=\"post\">(.*?)</li>");
 	messageIdRegex.assign("<div id=\"message_([^\"]+)\" class=\"");
+	messagePseudoRegex.assign("<li class=\"pseudo\">\n<stron[^>]*>([^<]*)</strong>");
 	grepFormRegex.assign("<form id=\"post\" name=\"post\" method=\"post\".*?</form>");
 	grepInputRegex.assign("<input ([^=]*)=\"([^\"]*)\" ([^=]*)=\"([^\"]*)\" ([^=]*)=\"([^\"]*)\" />");
+	matchSmileyRegex.assign("<img src=\"[^\"]+\" alt=\"([^\"]+)\" />");
+	matchLinkRegex.assign("<a href=\"(mailto:)?([^\"]+)\".*?>.*?</a>");
 }
 
-void jvcPostManagerClass::init(std::string topic, std::string newPseudo, std::string newMdpasse)
+void jvcPostManagerClass::init(std::string newTopic, std::string newPseudo, std::string newMdpasse)
 {
-	requestGet.setOpt(curlpp::options::Url(topic));
+	topic = newTopic;
 	pseudo = newPseudo;
 	mdpasse = newMdpasse;
 }
@@ -42,7 +28,20 @@ std::list<std::string> jvcPostManagerClass::getLastMessages()
 	std::list<std::string> newMessages;
 	boost::smatch messages;
 	boost::smatch messageId;
+	boost::smatch messagePseudo;
 	std::string sources;
+	curlpp::Easy requestGet;
+	std::ostringstream oss;
+	std::list<std::string> headerGet;
+
+	headerGet.push_back("User-Agent: JVTerm");
+	headerGet.push_back("Content-Type: application/x-www-form-urlencoded");
+	headerGet.push_back("Connection: Keep-Alive");
+	headerGet.push_back("Cookie: lol=mdr");
+
+	requestGet.setOpt(curlpp::options::HttpHeader(headerGet));
+	requestGet.setOpt(curlpp::options::WriteStream(&oss));
+	requestGet.setOpt(curlpp::options::Url(topic));
 
 	requestGet.perform();
 
@@ -54,10 +53,14 @@ std::list<std::string> jvcPostManagerClass::getLastMessages()
 	{
 		std::string::size_type pos = std::string::npos;
 		std::string thisNewMessage = messages.str(1);
+		std::string pseudoOfThisMessage;
 		int idOfThisMessage = 0;
 
 		boost::regex_search(sources, messageId, messageIdRegex);
 		idOfThisMessage = std::stoi(messageId.str(1));
+
+		boost::regex_search(sources, messagePseudo, messagePseudoRegex);
+		pseudoOfThisMessage = messagePseudo.str(1);
 
 		if(idOfThisMessage > idOfLastMessage)
 		{
@@ -73,8 +76,23 @@ std::list<std::string> jvcPostManagerClass::getLastMessages()
 			{
 				thisNewMessage.replace(pos, 6, "\n");
 			}
+			while((pos = thisNewMessage.find("  ")) != std::string::npos)
+			{
+				thisNewMessage.replace(pos, 2, " ");
+			}
+			while((pos = thisNewMessage.find("&lt;")) != std::string::npos)
+			{
+				thisNewMessage.replace(pos, 4, "<");
+			}
+			while((pos = thisNewMessage.find("&gt;")) != std::string::npos)
+			{
+				thisNewMessage.replace(pos, 4, ">");
+			}
 
-			newMessages.push_back(thisNewMessage);
+			thisNewMessage = boost::regex_replace(thisNewMessage, matchSmileyRegex, "$1");
+			thisNewMessage = boost::regex_replace(thisNewMessage, matchLinkRegex, "$2");
+
+			newMessages.push_back(pseudoOfThisMessage + " | " + thisNewMessage);
 			idOfLastMessage = idOfThisMessage;
 		}
 
@@ -89,6 +107,19 @@ void jvcPostManagerClass::postMessage(std::string message)
 	std::string sources = lastSources;
 	std::string dataPost;
 	boost::smatch inputMatch;
+	curlpp::Easy requestPost;
+	std::ostringstream output;
+	std::list<std::string> headerPost;
+
+	headerPost.push_back("User-Agent: JVTerm");
+	headerPost.push_back("Content-Type: application/x-www-form-urlencoded");
+	headerPost.push_back("Connection: Keep-Alive");
+	headerPost.push_back("Cookie: lol=mdr");
+
+	requestPost.setOpt(curlpp::options::HttpHeader(headerPost));
+	requestPost.setOpt(curlpp::options::WriteStream(&output));
+	requestPost.setOpt(curlpp::options::Url("http://www.jeuxvideo.com/cgi-bin/jvforums/forums.cgi"));
+	requestPost.setOpt(curlpp::options::CookieList(""));
 
 	boost::regex_search(sources, inputMatch, grepFormRegex);
 	sources = inputMatch.str(0);
